@@ -1,0 +1,48 @@
+name: Build Kernel Redmi 9C (Docker)
+on:
+  workflow_dispatch: # Cho phép nhấn nút Build thủ công
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout mã nguồn
+        uses: actions/checkout@v4
+
+      - name: Cài đặt công cụ Build
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc bison build-essential flex gcc-aarch64-linux-gnu git libssl-dev python3
+
+      - name: Cấu hình Docker Features
+        run: |
+          # Áp dụng cấu hình mặc định cho Redmi 9C (angelica)
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- angelica_defconfig
+          
+          # Tự động bật các flag Docker vào file .config
+          scripts/config --enable CONFIG_NAMESPACES
+          scripts/config --enable CONFIG_NET_NS
+          scripts/config --enable CONFIG_PID_NS
+          scripts/config --enable CONFIG_IPC_NS
+          scripts/config --enable CONFIG_UTS_NS
+          scripts/config --enable CONFIG_CGROUPS
+          scripts/config --enable CONFIG_CGROUP_FREEZER
+          scripts/config --enable CONFIG_CGROUP_PIDS
+          scripts/config --enable CONFIG_CGROUP_DEVICE
+          scripts/config --enable CONFIG_CPUSETS
+          scripts/config --enable CONFIG_MEMCG
+          scripts/config --enable CONFIG_OVERLAY_FS
+          scripts/config --enable CONFIG_VETH
+          scripts/config --enable CONFIG_BRIDGE
+          scripts/config --enable CONFIG_IP_NF_TARGET_MASQUERADE
+
+      - name: Biên dịch Kernel
+        run: |
+          make -j$(nproc) ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu-
+
+      - name: Upload kết quả (Boot Image)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kernel-Redmi9C-Docker
+          path: arch/arm64/boot/Image.gz-dtb
+          
